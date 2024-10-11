@@ -27,11 +27,11 @@ COMMON USAGE
 
 Command line::
 
-  SPF2IP [-h] --domain DOMAIN [--ip-version {4,6}]
+  SPF2IP [-h] --domain DOMAIN [--ip-version {4,6}] [--timeout TIMEOUT]
 
 Module::
   
   from SPF2IP import SPF2IP
-  lookup = SPF2IP('example.org')
+  lookup = SPF2IP('example.org', 5.0)
 
   lookup.IPArray('4')   # Specify the IP version which you would like listed
