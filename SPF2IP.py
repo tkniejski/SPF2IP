@@ -11,10 +11,10 @@ except NameError:
   #Python3
   unicode = str
 
-def dns_request_unicode(hostname,record_type,*args,**kwargs):
+def dns_request_unicode(hostname,record_type,timeout,*args,**kwargs):
   output = []
   try:
-    result = dns.resolver.query(hostname,record_type,*args,**kwargs)
+    result = dns.resolver.query(hostname,record_type,lifetime=timeout,*args,**kwargs)
   except (dns.resolver.NoAnswer,dns.resolver.NXDOMAIN):
     return output
   for entry in result:
@@ -54,8 +54,9 @@ ip_sorter = {
 }
 
 class SPF2IP:
-  def __init__(self, domain):
+  def __init__(self, domain, timeout):
     self.included_domains = [ domain ]
+    self.timeout = timeout
 
   def IPArray(self,ip_version='4'):
     ips = []
@@ -91,7 +92,7 @@ class SPF2IP:
     return sorted(list(set(includes)))
 
   def GetSPFArray(self, domain):
-    results = dns_request_unicode(domain,'TXT')
+    results = dns_request_unicode(domain,'TXT',self.timeout)
     for rrset in results:
       if re.match(r'v=spf1 ',rrset):
         return sorted(list(set(rrset.lower().split())))
@@ -127,9 +128,9 @@ class SPF2IP:
             values.append(regex.group('address'))
         elif regex.group('type').upper() == ip_types[ip_version]['dns_hostname_type']:
           if regex.group('address'):
-            address_results = dns_request_unicode(regex.group('address'),ip_types[ip_version]['dns_hostname_type'])
+            address_results = dns_request_unicode(regex.group('address'),ip_types[ip_version]['dns_hostname_type'],self.timeout)
           else:
-            address_results = dns_request_unicode(domain,ip_types[ip_version]['dns_hostname_type'])
+            address_results = dns_request_unicode(domain,ip_types[ip_version]['dns_hostname_type'],self.timeout)
           for address in address_results:
             if regex.group('mask'):
               values.append(address+regex.group('mask'))
@@ -137,11 +138,11 @@ class SPF2IP:
               values.append(address)
         elif regex.group('type').upper() == 'MX':
           if regex.group('address'):
-            mx_results = dns_request_unicode(regex.group('address'),'MX')
+            mx_results = dns_request_unicode(regex.group('address'),'MX',self.timeout)
           else:
-            mx_results = dns_request_unicode(domain,'MX')
+            mx_results = dns_request_unicode(domain,'MX',self.timeout)
           for exchange in mx_results:
-            address_results = dns_request_unicode(exchange,ip_types[ip_version]['dns_hostname_type'])
+            address_results = dns_request_unicode(exchange,ip_types[ip_version]['dns_hostname_type'],self.timeout)
             for address in address_results:
               if regex.group('mask'):
                 values.append(address+regex.group('mask'))
@@ -161,10 +162,11 @@ def main():
   parser = argparse.ArgumentParser(description="Script to extract IP addresses from a SPF record into a list")
   parser.add_argument('--domain',required=True,help='Domain for which the IP addresses should be extracted')
   parser.add_argument('--ip-version',choices=['4','6'],default='4',help='Define version of IP list to extract')
+  parser.add_argument('--timeout',type=float,default=10.0,help='DNS resolver timeout (defaults 10s)')
 
   args = parser.parse_args()
 
-  lookup = SPF2IP(args.domain)
+  lookup = SPF2IP(args.domain, args.timeout)
   if lookup:
     for ip in lookup.IPArray(args.ip_version):
       print(ip)
