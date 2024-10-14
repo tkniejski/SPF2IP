@@ -54,7 +54,7 @@ ip_sorter = {
 }
 
 class SPF2IP:
-  def __init__(self, domain, timeout):
+  def __init__(self, domain, timeout = 10.0):
     self.included_domains = [ domain ]
     self.timeout = timeout
 
